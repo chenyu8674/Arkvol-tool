@@ -1,0 +1,4 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+shared/arkvol-entry.json
