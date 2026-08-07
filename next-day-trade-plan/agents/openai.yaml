@@ -1,0 +1,4 @@
+interface:
+  display_name: "次日交易计划（台股）"
+  short_description: "管理多持仓关注清单，结合前复权行情与新闻生成台股每日盘前计划"
+  default_prompt: "使用 $next-day-trade-plan 保存我的多只台股持仓，并为关注清单生成下一个交易日的组合盘前计划。"
