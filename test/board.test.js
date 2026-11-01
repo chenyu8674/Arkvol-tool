@@ -61,14 +61,16 @@ test('freestyle: overline wins, renju: black overline is not a win', () => {
 
 test('handicap stones and turn order', () => {
     assert.deepEqual(handicapStones(15, 0), [])
-    assert.equal(handicapStones(15, 3).length, 4)
+    assert.equal(handicapStones(15, 1).length, 1)
+    assert.equal(handicapStones(15, 3).length, 3)
+    assert.equal(handicapStones(15, 9).length, 9)
     const game = new Game({ size: 15, handicap: 2 })
     assert.equal(game.turn, WHITE)
     game.play(0, 0)
     assert.equal(game.turn, BLACK)
     game.undo()
     assert.equal(game.turn, WHITE)
-    assert.equal(game.board.count, 3)
+    assert.equal(game.board.count, 2)
 })
 
 test('game validates moves and detects draw by full board', () => {

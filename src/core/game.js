@@ -10,14 +10,14 @@ const HANDICAP_OFFSETS = [
 ]
 
 /**
- * 让子：黑棋除了天元，再预置 count 颗子（count = 0 表示不让子），之后由白棋先走。
- * 预置位置围绕天元对称排布，最多让 8 子。
+ * 让子：黑棋开局预置 count 颗子（第一颗在天元，其余围绕天元对称排布，最多 9 子），之后由白棋先走。
+ * count = 0 表示不让子，由黑棋先走。
  */
 export function handicapStones(size, count) {
     if (!count) return []
     const c = size >> 1
     const stones = [[c, c]]
-    for (let i = 0; i < Math.min(count, HANDICAP_OFFSETS.length); i++) {
+    for (let i = 0; i < Math.min(count - 1, HANDICAP_OFFSETS.length); i++) {
         const [dx, dy] = HANDICAP_OFFSETS[i]
         stones.push([c + dx, c + dy])
     }

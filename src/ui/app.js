@@ -40,7 +40,7 @@ function initControls() {
     fillSelect($('size'), sizes, 15)
     fillSelect($('level'), LEVELS.map(l => [l.id, `${l.id} · ${l.name}`]), state.level)
     const handicaps = [[0, '不让子']]
-    for (let i = 1; i <= 8; i++) handicaps.push([i, `让 ${i} 子（黑棋天元 + ${i} 子）`])
+    for (let i = 1; i <= 9; i++) handicaps.push([i, `让 ${i} 子（黑棋开局 ${i} 子，白先）`])
     fillSelect($('handicap'), handicaps, 0)
 }
 
