@@ -4,24 +4,17 @@ import { isForbidden, forbiddenPoints } from './rules.js'
 export const MIN_SIZE = 9
 export const MAX_SIZE = 19
 
-const HANDICAP_OFFSETS = [
-    [1, 1], [-1, -1], [1, -1], [-1, 1],
-    [0, 2], [0, -2], [2, 0], [-2, 0]
-]
+export const MAX_HANDICAP = 3
+
+const HANDICAP_OFFSETS = [[2, 2], [-2, -2], [2, -2]]
 
 /**
- * 让子：黑棋开局预置 count 颗子（第一颗在天元，其余围绕天元对称排布，最多 9 子），之后由白棋先走。
- * count = 0 表示不让子，由黑棋先走。
+ * 让子：开局先给黑棋预置 count 颗子（最多 3 子，围绕天元隔一格对称排布，天元留空），
+ * 之后仍由黑棋先走。count = 0 表示不让子。
  */
 export function handicapStones(size, count) {
-    if (!count) return []
     const c = size >> 1
-    const stones = [[c, c]]
-    for (let i = 0; i < Math.min(count - 1, HANDICAP_OFFSETS.length); i++) {
-        const [dx, dy] = HANDICAP_OFFSETS[i]
-        stones.push([c + dx, c + dy])
-    }
-    return stones
+    return HANDICAP_OFFSETS.slice(0, Math.min(count, MAX_HANDICAP)).map(([dx, dy]) => [c + dx, c + dy])
 }
 
 export function buildBoard(setup) {
@@ -41,7 +34,7 @@ export class Game {
         this.forbidden = forbidden
         this.handicap = handicap
         this.preset = handicapStones(size, handicap).map(([x, y]) => [x, y, BLACK])
-        this.first = this.preset.length ? WHITE : BLACK
+        this.first = BLACK
         this.board = buildBoard({ size, forbidden, preset: this.preset, first: this.first, moves: [] })
         this.moves = []
         this.turn = this.first

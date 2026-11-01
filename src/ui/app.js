@@ -1,4 +1,4 @@
-import { Game, MIN_SIZE, MAX_SIZE, coordName } from '../core/game.js'
+import { Game, MIN_SIZE, MAX_SIZE, MAX_HANDICAP, coordName } from '../core/game.js'
 import { BLACK, WHITE } from '../core/board.js'
 import { LEVELS } from '../ai/levels.js'
 import { winProb } from '../ai/analysis.js'
@@ -40,7 +40,7 @@ function initControls() {
     fillSelect($('size'), sizes, 15)
     fillSelect($('level'), LEVELS.map(l => [l.id, `${l.id} · ${l.name}`]), state.level)
     const handicaps = [[0, '不让子']]
-    for (let i = 1; i <= 9; i++) handicaps.push([i, `让 ${i} 子（黑棋开局 ${i} 子，白先）`])
+    for (let i = 1; i <= MAX_HANDICAP; i++) handicaps.push([i, `让 ${i} 子（先放 ${i} 子，黑先走）`])
     fillSelect($('handicap'), handicaps, 0)
 }
 

@@ -63,13 +63,19 @@ test('handicap stones and turn order', () => {
     assert.deepEqual(handicapStones(15, 0), [])
     assert.equal(handicapStones(15, 1).length, 1)
     assert.equal(handicapStones(15, 3).length, 3)
-    assert.equal(handicapStones(15, 9).length, 9)
+    assert.equal(handicapStones(15, 9).length, 3)
+    for (let n = 1; n <= 3; n++) {
+        const game = new Game({ size: 15, handicap: n })
+        assert.equal(game.board.count, n)
+        assert.equal(game.turn, BLACK)
+        assert.equal(game.board.get(7, 7), 0, 'center stays empty')
+    }
     const game = new Game({ size: 15, handicap: 2 })
+    game.play(7, 7)
     assert.equal(game.turn, WHITE)
-    game.play(0, 0)
-    assert.equal(game.turn, BLACK)
+    assert.equal(game.board.count, 3)
     game.undo()
-    assert.equal(game.turn, WHITE)
+    assert.equal(game.turn, BLACK)
     assert.equal(game.board.count, 2)
 })
 
