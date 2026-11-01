@@ -90,6 +90,19 @@ function startGame() {
     maybeAiMove()
 }
 
+function applyPlayers() {
+    state.level = Number($('level').value)
+    state.pvp = state.level === 0
+    state.human = Number($('color').value)
+    $('color').disabled = state.pvp
+    if (!state.game) return
+    if (state.pvp) $('aiInfo').textContent = ''
+    if (state.thinking) cancelWorker()
+    state.hint = null
+    refresh()
+    maybeAiMove()
+}
+
 function setStatus(text) {
     $('status').textContent = text
 }
@@ -126,7 +139,7 @@ function refresh() {
 
 function maybeAiMove() {
     const game = state.game
-    if (game.over || isHumanTurn() || state.thinking) return
+    if (game.over || isHumanTurn() || state.thinking || state.analyzing) return
     state.thinking = true
     const id = ++state.requestId
     state.worker.postMessage({ type: 'think', id, setup: game.setup(), color: game.turn, level: state.level })
@@ -405,6 +418,7 @@ function onAnalysis(msg) {
     $('progress').hidden = true
     renderReport(msg)
     refresh()
+    maybeAiMove()
 }
 
 function renderReport(msg) {
@@ -477,9 +491,8 @@ function bind() {
     $('hint').addEventListener('click', requestHint)
     $('analyze').addEventListener('click', requestAnalysis)
     $('reopen').addEventListener('click', openReport)
-    $('level').addEventListener('change', () => {
-        $('color').disabled = Number($('level').value) === 0
-    })
+    $('level').addEventListener('change', applyPlayers)
+    $('color').addEventListener('change', applyPlayers)
     $('showForbidden').addEventListener('change', () => state.game && refresh())
     canvas.addEventListener('click', onCanvasClick)
     canvas.addEventListener('mousemove', onCanvasMove)
