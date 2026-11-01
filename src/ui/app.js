@@ -7,10 +7,13 @@ const $ = (id) => document.getElementById(id)
 const canvas = $('board')
 const ctx = canvas.getContext('2d')
 
+const CONTROLS = ['size', 'black', 'white', 'handicap', 'forbidden', 'showForbidden']
+
 const state = {
     game: null,
-    human: BLACK,
-    level: 4,
+    players: { [BLACK]: 0, [WHITE]: 4 },
+    sessionPlayers: { [BLACK]: 0, [WHITE]: 4 },
+    active: false,
     thinking: false,
     requestId: 0,
     worker: null,
@@ -20,8 +23,7 @@ const state = {
     viewIndex: null,
     overlay: null,
     analysis: null,
-    analyzing: false,
-    pvp: false
+    analyzing: false
 }
 
 function fillSelect(el, items, selected) {
@@ -39,7 +41,9 @@ function initControls() {
     const sizes = []
     for (let s = MIN_SIZE; s <= MAX_SIZE; s++) sizes.push([s, `${s} × ${s}`])
     fillSelect($('size'), sizes, 15)
-    fillSelect($('level'), [[0, '真人（双人轮流下子）'], ...LEVELS.map(l => [l.id, `${l.id} · ${l.name}`])], state.level)
+    const players = [[0, '真人'], ...LEVELS.map(l => [l.id, `AI ${l.id} · ${l.name}`])]
+    fillSelect($('black'), players, state.players[BLACK])
+    fillSelect($('white'), players, state.players[WHITE])
     const handicaps = [[0, '不让子']]
     for (let i = 1; i <= MAX_HANDICAP; i++) handicaps.push([i, `让 ${i} 子（先放 ${i} 子，黑先走）`])
     fillSelect($('handicap'), handicaps, 0)
@@ -65,17 +69,22 @@ function cancelWorker() {
 }
 
 function isHumanTurn() {
-    return state.pvp || state.game.turn === state.human
+    return state.players[state.game.turn] === 0
 }
 
-function startGame() {
+function hasHuman() {
+    return state.players[BLACK] === 0 || state.players[WHITE] === 0
+}
+
+function playerLabel(players, color) {
+    const id = players[color]
+    return id === 0 ? '真人' : `AI ${LEVELS[id - 1].name}`
+}
+
+function prepareGame() {
     cancelWorker()
-    const size = Number($('size').value)
-    state.human = Number($('color').value)
-    state.level = Number($('level').value)
-    state.pvp = state.level === 0
     state.game = new Game({
-        size,
+        size: Number($('size').value),
         forbidden: $('forbidden').checked,
         handicap: Number($('handicap').value)
     })
@@ -83,24 +92,37 @@ function startGame() {
     state.viewIndex = null
     state.overlay = null
     state.analysis = null
+    state.hover = null
     $('reopen').hidden = true
     $('reportDialog').close()
     $('aiInfo').textContent = ''
+}
+
+function startGame() {
+    prepareGame()
+    state.players = { [BLACK]: Number($('black').value), [WHITE]: Number($('white').value) }
+    state.sessionPlayers = { ...state.players }
+    state.active = true
     refresh()
     maybeAiMove()
 }
 
-function applyPlayers() {
-    state.level = Number($('level').value)
-    state.pvp = state.level === 0
-    state.human = Number($('color').value)
-    $('color').disabled = state.pvp
-    if (!state.game) return
-    if (state.pvp) $('aiInfo').textContent = ''
-    if (state.thinking) cancelWorker()
+function endGame() {
+    cancelWorker()
+    state.active = false
     state.hint = null
     refresh()
-    maybeAiMove()
+}
+
+function toggleGame() {
+    if (state.active) endGame()
+    else startGame()
+}
+
+function onSetupChange() {
+    if (state.active) return
+    prepareGame()
+    refresh()
 }
 
 function setStatus(text) {
@@ -111,38 +133,52 @@ function colorName(c) {
     return c === BLACK ? '黑棋' : '白棋'
 }
 
+function winnerSuffix(game) {
+    const humans = [BLACK, WHITE].filter(c => state.sessionPlayers[c] === 0)
+    if (humans.length !== 1) return ''
+    return game.winner === humans[0] ? ' · 你赢了' : ' · AI 获胜'
+}
+
+function statusText(game) {
+    if (game.winner) return `${colorName(game.winner)}获胜${winnerSuffix(game)}`
+    if (game.draw) return '平局'
+    if (!state.active) return game.moves.length ? '对局已结束，可以复盘评估' : '点击「开始新对局」'
+    if (state.thinking) return `AI（${colorName(game.turn)}）思考中…`
+    if (isHumanTurn()) return `轮到${colorName(game.turn)}${hasAi() ? '（你）' : ''}`
+    return `轮到 AI（${colorName(game.turn)}）`
+}
+
+function hasAi() {
+    return state.players[BLACK] !== 0 || state.players[WHITE] !== 0
+}
+
 function refresh() {
     const game = state.game
+    if (state.active && game.over) state.active = false
     state.forbiddenList = []
-    if ($('showForbidden').checked && game.forbidden && game.turn === BLACK && !game.over && isHumanTurn()) {
+    if (state.active && $('showForbidden').checked && game.forbidden && game.turn === BLACK && isHumanTurn()) {
         state.forbiddenList = game.forbiddenList()
     }
-    if (game.winner) {
-        const who = state.pvp ? '' : game.winner === state.human ? ' · 你赢了' : ' · AI 获胜'
-        setStatus(`${colorName(game.winner)}获胜${who}`)
-    } else if (game.draw) {
-        setStatus('平局')
-    } else if (state.thinking) {
-        setStatus(`AI（${colorName(game.turn)}）思考中…`)
-    } else if (state.pvp) {
-        setStatus(`轮到${colorName(game.turn)}`)
-    } else if (game.turn === state.human) {
-        setStatus(`轮到你（${colorName(game.turn)}）`)
-    } else {
-        setStatus(`轮到 AI（${colorName(game.turn)}）`)
-    }
-    $('undo').disabled = game.moves.length === 0 || state.analyzing
-    $('analyze').disabled = game.moves.length < 2 || state.analyzing
-    $('hint').disabled = game.over || !isHumanTurn() || state.thinking || state.analyzing
+    setStatus(statusText(game))
+
+    for (const id of CONTROLS) $(id).disabled = state.active
+    const toggle = $('newGame')
+    toggle.textContent = state.active ? '结束对局' : '开始新对局'
+    toggle.classList.toggle('danger', state.active)
+
+    const playing = state.active && !state.analyzing
+    $('undo').disabled = !(playing && hasHuman() && game.moves.length > 0)
+    $('hint').disabled = !(playing && isHumanTurn() && !state.thinking)
+    $('analyze').disabled = state.active || game.moves.length < 2 || state.analyzing
     draw()
 }
 
 function maybeAiMove() {
     const game = state.game
-    if (game.over || isHumanTurn() || state.thinking || state.analyzing) return
+    if (!state.active || game.over || isHumanTurn() || state.thinking || state.analyzing) return
     state.thinking = true
     const id = ++state.requestId
-    state.worker.postMessage({ type: 'think', id, setup: game.setup(), color: game.turn, level: state.level })
+    state.worker.postMessage({ type: 'think', id, setup: game.setup(), color: game.turn, level: state.players[game.turn] })
     refresh()
 }
 
@@ -179,11 +215,12 @@ function onMove(msg) {
     state.viewIndex = null
     state.overlay = null
     refresh()
+    maybeAiMove()
 }
 
 function requestHint() {
     const game = state.game
-    if (game.over || !isHumanTurn() || state.thinking) return
+    if (!state.active || game.over || !isHumanTurn() || state.thinking) return
     state.thinking = true
     const id = ++state.requestId
     state.worker.postMessage({ type: 'think', id, kind: 'hint', setup: game.setup(), color: game.turn, level: 5, override: { time: 1500 } })
@@ -192,11 +229,11 @@ function requestHint() {
 
 function undo() {
     const game = state.game
-    if (!game.moves.length) return
+    if (!state.active || !game.moves.length || !hasHuman()) return
     cancelWorker()
     do {
         game.undo()
-    } while (!state.pvp && game.moves.length && game.turn !== state.human)
+    } while (game.moves.length && !isHumanTurn())
     state.hint = null
     state.viewIndex = null
     state.overlay = null
@@ -212,7 +249,7 @@ function onCanvasClick(e) {
         refresh()
         return
     }
-    if (game.over || state.thinking || state.analyzing || !isHumanTurn()) return
+    if (!state.active || game.over || state.thinking || state.analyzing || !isHumanTurn()) return
     const cell = cellAt(e)
     if (!cell) return
     const res = game.play(cell[0], cell[1])
@@ -346,7 +383,7 @@ function draw() {
     }
 
     const h = state.hover
-    if (h && state.viewIndex === null && !game.over && !state.thinking && isHumanTurn()
+    if (h && state.viewIndex === null && state.active && !game.over && !state.thinking && isHumanTurn()
         && game.board.get(h[0], h[1]) === 0 && !state.forbiddenList.some(([x, y]) => x === h[0] && y === h[1])) {
         drawStone(pos(h[0]), pos(h[1]), unit * 0.46, game.turn, 0.4)
     }
@@ -383,7 +420,7 @@ function drawStone(x, y, r, color, alpha) {
 
 function requestAnalysis() {
     const game = state.game
-    if (game.moves.length < 2) return
+    if (state.active || game.moves.length < 2) return
     cancelWorker()
     state.analyzing = true
     const id = ++state.requestId
@@ -418,14 +455,13 @@ function onAnalysis(msg) {
     $('progress').hidden = true
     renderReport(msg)
     refresh()
-    maybeAiMove()
 }
 
 function renderReport(msg) {
     const game = state.game
     const rows = [BLACK, WHITE].filter(c => msg.summary[c]).map(c => {
         const s = msg.summary[c]
-        const me = state.pvp ? '' : c === state.human ? '（你）' : '（AI）'
+        const me = `（${playerLabel(state.sessionPlayers, c)}）`
         return `<tr><td>${colorName(c)}${me}</td><td>${s.moves}</td><td>${pct(s.avgLoss)}</td>` +
             `<td>${s.accuracy.toFixed(0)}</td><td>${s.blunders}/${s.mistakes}/${s.inaccuracies}</td><td>${s.rating}</td></tr>`
     }).join('')
@@ -486,14 +522,13 @@ function drawCurve(results) {
 }
 
 function bind() {
-    $('newGame').addEventListener('click', startGame)
+    $('newGame').addEventListener('click', toggleGame)
     $('undo').addEventListener('click', undo)
     $('hint').addEventListener('click', requestHint)
     $('analyze').addEventListener('click', requestAnalysis)
     $('reopen').addEventListener('click', openReport)
-    $('level').addEventListener('change', applyPlayers)
-    $('color').addEventListener('change', applyPlayers)
-    $('showForbidden').addEventListener('change', () => state.game && refresh())
+    for (const id of ['size', 'handicap', 'forbidden']) $(id).addEventListener('change', onSetupChange)
+    $('showForbidden').addEventListener('change', () => refresh())
     canvas.addEventListener('click', onCanvasClick)
     canvas.addEventListener('mousemove', onCanvasMove)
     canvas.addEventListener('mouseleave', () => {
@@ -505,6 +540,5 @@ function bind() {
 
 initControls()
 bind()
-$('color').disabled = state.level === 0
-createWorker()
-startGame()
+prepareGame()
+refresh()
