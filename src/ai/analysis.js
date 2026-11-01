@@ -69,13 +69,15 @@ export function summarize(results) {
     return sides
 }
 
-/** 平均胜率损失到棋力档位的粗略映射，应以 scripts/calibrate.js 的结果为准。 */
+/**
+ * 平均胜率损失到棋力档位的粗略映射。
+ * 依据 scripts/calibrate.js 的自对弈结果：1 档 7.1%、2 档 7.0%、3 档 2.7%、4 档 0.0%、5 档 0.4%、6 档 0.9%。
+ * 复盘引擎自身只有 6 层深度，所以对 4 档以上的区分度有限，只能给出“高级及以上”。
+ */
 export const RATING_TABLE = [
-    { maxLoss: 0.01, name: '大师' },
-    { maxLoss: 0.025, name: '专家' },
-    { maxLoss: 0.05, name: '高级' },
-    { maxLoss: 0.09, name: '中级' },
-    { maxLoss: 0.14, name: '初级' },
+    { maxLoss: 0.015, name: '高级及以上' },
+    { maxLoss: 0.04, name: '中级' },
+    { maxLoss: 0.065, name: '初级' },
     { maxLoss: Infinity, name: '入门' }
 ]
 

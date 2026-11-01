@@ -89,3 +89,17 @@ test('works on all supported sizes', () => {
         assert.equal(game.winner, BLACK, `size ${size}`)
     }
 })
+
+test('game rejects forbidden moves for black and lists them', () => {
+    const game = new Game({ size: 15, forbidden: true })
+    const seq = [[6, 7], [0, 0], [8, 7], [0, 2], [7, 6], [0, 4], [7, 8], [0, 6]]
+    for (const [x, y] of seq) assert.equal(game.play(x, y).ok, true)
+    assert.equal(game.turn, BLACK)
+    assert.ok(game.forbiddenList().some(([x, y]) => x === 7 && y === 7))
+    assert.equal(game.play(7, 7).reason, 'forbidden')
+    assert.equal(game.turn, BLACK)
+
+    const free = new Game({ size: 15, forbidden: false })
+    for (const [x, y] of seq) free.play(x, y)
+    assert.equal(free.play(7, 7).ok, true)
+})
