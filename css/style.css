@@ -121,14 +121,35 @@ button.primary:hover { background: #ebb85c; }
     min-height: 20px;
 }
 
-.report { margin-top: 14px; border-top: 1px solid #3a414c; padding-top: 12px; font-size: 13px; }
-.report table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-.report th, .report td { text-align: left; padding: 3px 4px; }
-.report th { color: var(--muted); font-weight: 500; }
-.report canvas { width: 100%; height: auto; background: #1d2127; border-radius: 6px; }
-.report ol { padding-left: 20px; margin: 8px 0 0; color: var(--muted); }
-.report li { cursor: pointer; padding: 1px 0; }
-.report li:hover { color: var(--text); }
+.dialog {
+    width: min(560px, 94vw);
+    max-height: 88vh;
+    overflow: auto;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid #3a414c;
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 13px;
+}
+
+.dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.dialog header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.dialog h2 { margin: 0; font-size: 18px; }
+.dialog h3 { margin: 12px 0 4px; font-size: 14px; color: var(--muted); font-weight: 500; }
+.dialog .close { background: transparent; font-size: 22px; line-height: 1; padding: 2px 8px; }
+.dialog footer { margin-top: 14px; display: flex; justify-content: flex-end; }
+.dialog footer .primary { grid-column: auto; padding: 8px 24px; }
+.dialog table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.dialog th, .dialog td { text-align: left; padding: 4px 6px; }
+.dialog th { color: var(--muted); font-weight: 500; }
+.dialog canvas { width: 100%; height: auto; background: #1d2127; border-radius: 6px; margin-top: 8px; }
+.dialog ol { padding-left: 22px; margin: 4px 0 0; color: var(--muted); }
+.dialog li { cursor: pointer; padding: 2px 0; }
+.dialog li:hover { color: var(--text); }
+
+button[hidden] { display: none; }
+select:disabled { opacity: 0.5; }
 
 .progress { height: 6px; background: #1d2127; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
 #progressBar { height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }

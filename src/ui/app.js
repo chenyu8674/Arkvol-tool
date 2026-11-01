@@ -20,7 +20,8 @@ const state = {
     viewIndex: null,
     overlay: null,
     analysis: null,
-    analyzing: false
+    analyzing: false,
+    pvp: false
 }
 
 function fillSelect(el, items, selected) {
@@ -38,7 +39,7 @@ function initControls() {
     const sizes = []
     for (let s = MIN_SIZE; s <= MAX_SIZE; s++) sizes.push([s, `${s} × ${s}`])
     fillSelect($('size'), sizes, 15)
-    fillSelect($('level'), LEVELS.map(l => [l.id, `${l.id} · ${l.name}`]), state.level)
+    fillSelect($('level'), [[0, '真人（双人轮流下子）'], ...LEVELS.map(l => [l.id, `${l.id} · ${l.name}`])], state.level)
     const handicaps = [[0, '不让子']]
     for (let i = 1; i <= MAX_HANDICAP; i++) handicaps.push([i, `让 ${i} 子（先放 ${i} 子，黑先走）`])
     fillSelect($('handicap'), handicaps, 0)
@@ -63,11 +64,16 @@ function cancelWorker() {
     createWorker()
 }
 
+function isHumanTurn() {
+    return state.pvp || state.game.turn === state.human
+}
+
 function startGame() {
     cancelWorker()
     const size = Number($('size').value)
     state.human = Number($('color').value)
     state.level = Number($('level').value)
+    state.pvp = state.level === 0
     state.game = new Game({
         size,
         forbidden: $('forbidden').checked,
@@ -77,7 +83,8 @@ function startGame() {
     state.viewIndex = null
     state.overlay = null
     state.analysis = null
-    $('report').hidden = true
+    $('reopen').hidden = true
+    $('reportDialog').close()
     $('aiInfo').textContent = ''
     refresh()
     maybeAiMove()
@@ -94,30 +101,32 @@ function colorName(c) {
 function refresh() {
     const game = state.game
     state.forbiddenList = []
-    if ($('showForbidden').checked && game.forbidden && game.turn === BLACK && !game.over && game.turn === state.human) {
+    if ($('showForbidden').checked && game.forbidden && game.turn === BLACK && !game.over && isHumanTurn()) {
         state.forbiddenList = game.forbiddenList()
     }
     if (game.winner) {
-        const who = game.winner === state.human ? '你赢了' : 'AI 获胜'
-        setStatus(`${colorName(game.winner)}获胜 · ${who}`)
+        const who = state.pvp ? '' : game.winner === state.human ? ' · 你赢了' : ' · AI 获胜'
+        setStatus(`${colorName(game.winner)}获胜${who}`)
     } else if (game.draw) {
         setStatus('平局')
     } else if (state.thinking) {
         setStatus(`AI（${colorName(game.turn)}）思考中…`)
+    } else if (state.pvp) {
+        setStatus(`轮到${colorName(game.turn)}`)
     } else if (game.turn === state.human) {
         setStatus(`轮到你（${colorName(game.turn)}）`)
     } else {
         setStatus(`轮到 AI（${colorName(game.turn)}）`)
     }
-    $('undo').disabled = game.moves.length === 0
+    $('undo').disabled = game.moves.length === 0 || state.analyzing
     $('analyze').disabled = game.moves.length < 2 || state.analyzing
-    $('hint').disabled = game.over || game.turn !== state.human || state.thinking
+    $('hint').disabled = game.over || !isHumanTurn() || state.thinking || state.analyzing
     draw()
 }
 
 function maybeAiMove() {
     const game = state.game
-    if (game.over || game.turn === state.human || state.thinking) return
+    if (game.over || isHumanTurn() || state.thinking) return
     state.thinking = true
     const id = ++state.requestId
     state.worker.postMessage({ type: 'think', id, setup: game.setup(), color: game.turn, level: state.level })
@@ -161,7 +170,7 @@ function onMove(msg) {
 
 function requestHint() {
     const game = state.game
-    if (game.over || game.turn !== state.human || state.thinking) return
+    if (game.over || !isHumanTurn() || state.thinking) return
     state.thinking = true
     const id = ++state.requestId
     state.worker.postMessage({ type: 'think', id, kind: 'hint', setup: game.setup(), color: game.turn, level: 5, override: { time: 1500 } })
@@ -174,7 +183,7 @@ function undo() {
     cancelWorker()
     do {
         game.undo()
-    } while (game.moves.length && game.turn !== state.human)
+    } while (!state.pvp && game.moves.length && game.turn !== state.human)
     state.hint = null
     state.viewIndex = null
     state.overlay = null
@@ -190,7 +199,7 @@ function onCanvasClick(e) {
         refresh()
         return
     }
-    if (game.over || state.thinking || game.turn !== state.human) return
+    if (game.over || state.thinking || state.analyzing || !isHumanTurn()) return
     const cell = cellAt(e)
     if (!cell) return
     const res = game.play(cell[0], cell[1])
@@ -324,9 +333,9 @@ function draw() {
     }
 
     const h = state.hover
-    if (h && state.viewIndex === null && !game.over && !state.thinking && game.turn === state.human
+    if (h && state.viewIndex === null && !game.over && !state.thinking && isHumanTurn()
         && game.board.get(h[0], h[1]) === 0 && !state.forbiddenList.some(([x, y]) => x === h[0] && y === h[1])) {
-        drawStone(pos(h[0]), pos(h[1]), unit * 0.46, state.human, 0.4)
+        drawStone(pos(h[0]), pos(h[1]), unit * 0.46, game.turn, 0.4)
     }
 }
 
@@ -365,12 +374,13 @@ function requestAnalysis() {
     cancelWorker()
     state.analyzing = true
     const id = ++state.requestId
-    $('report').hidden = false
+    $('reopen').hidden = false
     $('progress').hidden = false
     $('progressBar').style.width = '0'
     $('summary').textContent = '正在分析…'
     $('mistakes').innerHTML = ''
     clearCurve()
+    openReport()
     state.worker.postMessage({ type: 'analyze', id, setup: game.setup(), depth: 6, time: 1200 })
     refresh()
 }
@@ -378,6 +388,11 @@ function requestAnalysis() {
 function onProgress(msg) {
     $('progressBar').style.width = `${Math.round((msg.done / msg.total) * 100)}%`
     $('summary').textContent = `正在分析… ${msg.done} / ${msg.total}`
+}
+
+function openReport() {
+    const dialog = $('reportDialog')
+    if (!dialog.open) dialog.showModal()
 }
 
 function pct(v) {
@@ -396,7 +411,7 @@ function renderReport(msg) {
     const game = state.game
     const rows = [BLACK, WHITE].filter(c => msg.summary[c]).map(c => {
         const s = msg.summary[c]
-        const me = c === state.human ? '（你）' : '（AI）'
+        const me = state.pvp ? '' : c === state.human ? '（你）' : '（AI）'
         return `<tr><td>${colorName(c)}${me}</td><td>${s.moves}</td><td>${pct(s.avgLoss)}</td>` +
             `<td>${s.accuracy.toFixed(0)}</td><td>${s.blunders}/${s.mistakes}/${s.inaccuracies}</td><td>${s.rating}</td></tr>`
     }).join('')
@@ -415,6 +430,8 @@ function renderReport(msg) {
         li.addEventListener('click', () => {
             state.viewIndex = r.index
             state.overlay = { best: r.best, played: [r.x, r.y] }
+            $('reportDialog').close()
+            setStatus(`复盘：第 ${r.index + 1} 手前的局面（绿圈最佳着法，红圈实战着法），点击棋盘返回`)
             draw()
         })
         ol.appendChild(li)
@@ -459,6 +476,10 @@ function bind() {
     $('undo').addEventListener('click', undo)
     $('hint').addEventListener('click', requestHint)
     $('analyze').addEventListener('click', requestAnalysis)
+    $('reopen').addEventListener('click', openReport)
+    $('level').addEventListener('change', () => {
+        $('color').disabled = Number($('level').value) === 0
+    })
     $('showForbidden').addEventListener('change', () => state.game && refresh())
     canvas.addEventListener('click', onCanvasClick)
     canvas.addEventListener('mousemove', onCanvasMove)
@@ -471,5 +492,6 @@ function bind() {
 
 initControls()
 bind()
+$('color').disabled = state.level === 0
 createWorker()
 startGame()

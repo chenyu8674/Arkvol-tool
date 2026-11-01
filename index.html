@@ -40,17 +40,25 @@
                 <button id="undo">悔棋</button>
                 <button id="hint">提示</button>
                 <button id="analyze">复盘评估</button>
+                <button id="reopen" hidden>查看评估结果</button>
             </div>
             <div id="aiInfo" class="info"></div>
-            <section id="report" class="report" hidden>
-                <h2>棋力评估</h2>
-                <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
-                <div id="summary"></div>
-                <canvas id="curve" width="320" height="120"></canvas>
-                <ol id="mistakes"></ol>
-            </section>
         </aside>
     </main>
+    <dialog id="reportDialog" class="dialog">
+        <form method="dialog">
+            <header>
+                <h2>棋力评估</h2>
+                <button value="close" class="close" aria-label="关闭">×</button>
+            </header>
+            <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
+            <div id="summary"></div>
+            <canvas id="curve" width="480" height="140"></canvas>
+            <h3>主要失误（点击在棋盘上查看）</h3>
+            <ol id="mistakes"></ol>
+            <footer><button value="close" class="primary">关闭</button></footer>
+        </form>
+    </dialog>
     <script type="module" src="src/ui/app.js"></script>
 </body>
 </html>
