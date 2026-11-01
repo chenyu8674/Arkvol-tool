@@ -94,7 +94,7 @@ function prepareGame() {
     state.analysis = null
     state.hover = null
     $('reopen').hidden = true
-    $('reportDialog').close()
+    closeReport()
     $('aiInfo').textContent = ''
 }
 
@@ -441,8 +441,11 @@ function onProgress(msg) {
 }
 
 function openReport() {
-    const dialog = $('reportDialog')
-    if (!dialog.open) dialog.showModal()
+    $('reportPane').hidden = false
+}
+
+function closeReport() {
+    $('reportPane').hidden = true
 }
 
 function pct(v) {
@@ -480,7 +483,7 @@ function renderReport(msg) {
         li.addEventListener('click', () => {
             state.viewIndex = r.index
             state.overlay = { best: r.best, played: [r.x, r.y] }
-            $('reportDialog').close()
+            closeReport()
             setStatus(`复盘：第 ${r.index + 1} 手前的局面（绿圈最佳着法，红圈实战着法），点击棋盘返回`)
             draw()
         })
@@ -527,6 +530,10 @@ function bind() {
     $('hint').addEventListener('click', requestHint)
     $('analyze').addEventListener('click', requestAnalysis)
     $('reopen').addEventListener('click', openReport)
+    $('reportBack').addEventListener('click', closeReport)
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeReport()
+    })
     for (const id of ['size', 'handicap', 'forbidden']) $(id).addEventListener('change', onSetupChange)
     $('showForbidden').addEventListener('change', () => refresh())
     canvas.addEventListener('click', onCanvasClick)
@@ -535,10 +542,24 @@ function bind() {
         state.hover = null
         draw()
     })
-    window.addEventListener('resize', draw)
+    window.addEventListener('resize', fitLayout)
+}
+
+/** 横屏时棋盘取窗口高度，面板与棋盘等高；窄屏时上下堆叠。 */
+function fitLayout() {
+    const pad = 16
+    const gap = 24
+    const w = window.innerWidth - 2 * pad
+    const h = window.innerHeight - 2 * pad
+    const stacked = w / h < 1.3
+    document.body.classList.toggle('stacked', stacked)
+    const b = stacked ? Math.min(w - 4, h * 0.8) : Math.min(h, (w - gap) / 1.62)
+    document.documentElement.style.setProperty('--b', `${Math.max(280, Math.floor(b))}px`)
+    if (state.game) draw()
 }
 
 initControls()
 bind()
+fitLayout()
 prepareGame()
 refresh()
