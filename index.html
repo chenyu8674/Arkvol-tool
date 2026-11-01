@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>五子棋 · 人机对战</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <main class="layout">
+        <section class="board-wrap">
+            <canvas id="board" aria-label="五子棋棋盘"></canvas>
+            <div id="status" class="status">准备开始</div>
+        </section>
+        <aside class="panel">
+            <h1>五子棋</h1>
+            <fieldset>
+                <legend>对局设置</legend>
+                <label>棋盘大小
+                    <select id="size"></select>
+                </label>
+                <label>我执
+                    <select id="color">
+                        <option value="1">黑棋（先手）</option>
+                        <option value="2">白棋（后手）</option>
+                    </select>
+                </label>
+                <label>AI 难度
+                    <select id="level"></select>
+                </label>
+                <label>让子（黑棋额外预置子数）
+                    <select id="handicap"></select>
+                </label>
+                <label class="check"><input type="checkbox" id="forbidden"> 黑棋禁手（三三 / 四四 / 长连）</label>
+                <label class="check"><input type="checkbox" id="showForbidden" checked> 显示禁手点</label>
+            </fieldset>
+            <div class="buttons">
+                <button id="newGame" class="primary">开始新对局</button>
+                <button id="undo">悔棋</button>
+                <button id="hint">提示</button>
+                <button id="analyze">复盘评估</button>
+            </div>
+            <div id="aiInfo" class="info"></div>
+            <section id="report" class="report" hidden>
+                <h2>棋力评估</h2>
+                <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
+                <div id="summary"></div>
+                <canvas id="curve" width="320" height="120"></canvas>
+                <ol id="mistakes"></ol>
+            </section>
+        </aside>
+    </main>
+    <script type="module" src="src/ui/app.js"></script>
+</body>
+</html>

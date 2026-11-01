@@ -1,0 +1,13 @@
+{
+    "name": "gomoku",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "description": "Native JS gomoku with AI, renju forbidden moves, handicap and strength analysis",
+    "scripts": {
+        "start": "node scripts/serve.js",
+        "test": "node --test test/*.test.js",
+        "arena": "node scripts/arena.js",
+        "calibrate": "node scripts/calibrate.js"
+    }
+}
