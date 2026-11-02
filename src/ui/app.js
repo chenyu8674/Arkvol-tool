@@ -45,7 +45,7 @@ function initControls() {
     fillSelect($('black'), players, state.players[BLACK])
     fillSelect($('white'), players, state.players[WHITE])
     const handicaps = [[0, '不让子']]
-    for (let i = 1; i <= MAX_HANDICAP; i++) handicaps.push([i, `让 ${i} 子（先放 ${i} 子，黑先走）`])
+    for (let i = 1; i <= MAX_HANDICAP; i++) handicaps.push([i, `让 ${i} 子`])
     fillSelect($('handicap'), handicaps, 0)
 }
 
@@ -89,8 +89,7 @@ function prepareGame() {
         handicap: Number($('handicap').value)
     })
     state.hint = null
-    state.viewIndex = null
-    state.overlay = null
+    clearReview()
     state.analysis = null
     state.hover = null
     $('reopen').hidden = true
@@ -212,8 +211,7 @@ function onMove(msg) {
         `AI 落子 ${coordName(game.size, msg.x, msg.y)} · 搜索深度 ${msg.depth} · ` +
         `${msg.nodes.toLocaleString()} 节点 · ${(msg.time / 1000).toFixed(2)}s · AI 胜率估计 ${rate}%` +
         (msg.proven ? ' · 已找到必胜' : '')
-    state.viewIndex = null
-    state.overlay = null
+    clearReview()
     refresh()
     maybeAiMove()
 }
@@ -235,8 +233,7 @@ function undo() {
         game.undo()
     } while (game.moves.length && !isHumanTurn())
     state.hint = null
-    state.viewIndex = null
-    state.overlay = null
+    clearReview()
     refresh()
     maybeAiMove()
 }
@@ -244,8 +241,7 @@ function undo() {
 function onCanvasClick(e) {
     const game = state.game
     if (state.viewIndex !== null) {
-        state.viewIndex = null
-        state.overlay = null
+        clearReview()
         refresh()
         return
     }
@@ -444,6 +440,12 @@ function openReport() {
     $('reportPane').hidden = false
 }
 
+function clearReview() {
+    state.viewIndex = null
+    state.overlay = null
+    for (const li of document.querySelectorAll('#mistakes li.active')) li.classList.remove('active')
+}
+
 function closeReport() {
     $('reportPane').hidden = true
 }
@@ -473,7 +475,7 @@ function renderReport(msg) {
         `<tbody>${rows}</tbody></table>` +
         '<div class="info">均损失 = 每步相对引擎最佳着法的平均胜率损失；档位为粗略估计。点击下方失误可查看最佳着法。</div>'
     drawCurve(msg.results)
-    const list = msg.results.filter(r => r.loss >= 0.05).sort((a, b) => b.loss - a.loss).slice(0, 12)
+    const list = msg.results.filter(r => r.loss >= 0.05).sort((a, b) => a.index - b.index)
     const ol = $('mistakes')
     ol.innerHTML = ''
     for (const r of list) {
@@ -481,9 +483,10 @@ function renderReport(msg) {
         li.textContent = `第 ${r.index + 1} 手 ${colorName(r.color)} ${coordName(game.size, r.x, r.y)}，` +
             `最佳 ${coordName(game.size, r.best[0], r.best[1])}，胜率损失 ${pct(r.loss)}`
         li.addEventListener('click', () => {
+            clearReview()
+            li.classList.add('active')
             state.viewIndex = r.index
             state.overlay = { best: r.best, played: [r.x, r.y] }
-            closeReport()
             setStatus(`复盘：第 ${r.index + 1} 手前的局面（绿圈最佳着法，红圈实战着法），点击棋盘返回`)
             draw()
         })

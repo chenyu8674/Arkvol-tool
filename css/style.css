@@ -91,13 +91,14 @@ legend { color: var(--muted); padding: 0 0.4em; font-size: 0.9em; }
 
 .grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.2em 0.8em;
 }
 
 label {
     display: flex;
     flex-direction: column;
+    min-width: 0;
     gap: 0.3em;
     margin-top: 0.6em;
     font-size: 0.9em;
@@ -119,7 +120,9 @@ select {
     border-radius: 0.4em;
     padding: 0.4em 0.5em;
     font-size: 1em;
+    width: 100%;
     min-width: 0;
+    text-overflow: ellipsis;
 }
 
 select:disabled { opacity: 0.5; }
@@ -180,8 +183,9 @@ button.primary.danger:hover { background: #ee6a62; }
 .report-pane th { color: var(--muted); font-weight: 500; }
 .report-pane canvas { width: 100%; height: auto; background: #1d2127; border-radius: 0.5em; margin-top: 0.5em; }
 .report-pane ol { padding-left: 1.6em; margin: 0.3em 0 0; color: var(--muted); font-size: 0.9em; }
-.report-pane li { cursor: pointer; padding: 0.2em 0; }
+.report-pane li { cursor: pointer; padding: 0.25em 0.4em; border-radius: 0.3em; }
 .report-pane li:hover { color: var(--text); }
+.report-pane li.active { background: rgba(224, 168, 74, 0.2); color: var(--text); outline: 1px solid var(--accent); }
 
 .progress { height: 0.5em; background: #1d2127; border-radius: 0.3em; overflow: hidden; margin-bottom: 0.6em; }
 #progressBar { height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
